@@ -35,7 +35,7 @@ open class ReactiveRestMappingHandlerAdapter(
         return handler is HandlerMethod && handler.method.declaringClass == ReactiveRestController::class.java
     }
 
-    override fun handle(exchange: ServerWebExchange?, handler: Any?): Mono<HandlerResult> {
+    override fun handle(exchange: ServerWebExchange, handler: Any): Mono<HandlerResult> {
         return super.handle(exchange, handler)
     }
 
@@ -45,7 +45,7 @@ open class ReactiveRestMappingHandlerAdapter(
         }
 
         override fun resolveArgument(parameter: MethodParameter, bindingContext: BindingContext, exchange: ServerWebExchange): Mono<Any> {
-            val path = exchange.request.path.pathWithinApplication().elements().getOrNull(1)?.value()
+            val path = exchange.request.rootPath
             return Mono.just(repositories[path]!!)
         }
     }
