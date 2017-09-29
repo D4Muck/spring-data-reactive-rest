@@ -1,0 +1,2 @@
+org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
+at.d4m.spring.data.rest.reactive.autoconfiguration.ReactiveRestAutoconfiguration
