@@ -10,6 +10,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.context.ApplicationContext
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.core.convert.ConversionService
 import org.springframework.data.repository.support.Repositories
 
 /**
@@ -35,8 +36,8 @@ open class ReactiveRestAutoconfiguration : InitializingBean {
 
     @Bean
     @ConditionalOnMissingBean
-    open fun reactiveRestController(): ReactiveRestController {
-        return ReactiveRestController()
+    open fun reactiveRestController(conversionService: ConversionService): ReactiveRestController {
+        return ReactiveRestController(conversionService)
     }
 
     @Bean

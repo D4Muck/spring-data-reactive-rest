@@ -2,25 +2,27 @@ package at.d4m.spring.data.rest.reactive
 
 import at.d4m.spring.data.repository.reactive.Change
 import at.d4m.spring.data.repository.reactive.RxJava2ChangeFeedRepository
+import at.d4m.spring.data.rethinkdb.template.NotFoundException
 import io.reactivex.Completable
 import io.reactivex.Flowable
 import io.reactivex.Single
+import org.springframework.core.ResolvableType
+import org.springframework.core.convert.ConversionService
 import org.springframework.data.repository.reactive.RxJava2CrudRepository
 import org.springframework.http.HttpMethod
+import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
-import org.springframework.web.bind.annotation.DeleteMapping
-import org.springframework.web.bind.annotation.GetMapping
-import org.springframework.web.bind.annotation.PostMapping
-import org.springframework.web.bind.annotation.ResponseBody
+import org.springframework.web.bind.annotation.*
 import org.springframework.web.server.MethodNotAllowedException
+import org.springframework.web.server.ResponseStatusException
 import java.util.concurrent.TimeUnit
 
 /**
  * @author Christoph Muck
  */
 @ResponseBody
-open class ReactiveRestController {
+open class ReactiveRestController(val conversionService: ConversionService) {
 
     @GetMapping("/{repository}")
     fun getAllEntities(info: ReactiveRestResourceInformation): Flowable<*> {
@@ -50,5 +52,20 @@ open class ReactiveRestController {
     fun deleteAll(info: ReactiveRestResourceInformation): Completable {
         return (info.repository as? RxJava2CrudRepository<*, *>)?.deleteAll()
                 ?: throw MethodNotAllowedException(HttpMethod.DELETE, listOf(HttpMethod.GET, HttpMethod.POST))
+    }
+
+    @DeleteMapping("/{repository}/{id}")
+    fun deleteEntity(@PathVariable id: String, info: ReactiveRestResourceInformation): Completable {
+        val idType = info.repositoryInformation.idType
+        val convertedId = conversionService.convert(id, idType)!!
+        return ((info.repository as? RxJava2CrudRepository<*, Any>)?.deleteById(convertedId)
+                ?: throw MethodNotAllowedException(HttpMethod.DELETE, listOf()))
+                .onErrorResumeNext {
+                    var error: Throwable = it
+                    if (it is NotFoundException) {
+                        error = ResponseStatusException(HttpStatus.NOT_FOUND, null, it)
+                    }
+                    Completable.error(error)
+                }
     }
 }
