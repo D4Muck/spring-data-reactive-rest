@@ -9,10 +9,7 @@ import io.reactivex.Single
 import org.springframework.core.ResolvableType
 import org.springframework.core.convert.ConversionService
 import org.springframework.data.repository.reactive.RxJava2CrudRepository
-import org.springframework.http.HttpMethod
-import org.springframework.http.HttpStatus
-import org.springframework.http.MediaType
-import org.springframework.http.ResponseEntity
+import org.springframework.http.*
 import org.springframework.web.bind.annotation.*
 import org.springframework.web.server.MethodNotAllowedException
 import org.springframework.web.server.ResponseStatusException
@@ -42,10 +39,16 @@ open class ReactiveRestController(val conversionService: ConversionService) {
         throw MethodNotAllowedException(HttpMethod.POST, listOf(HttpMethod.GET))
     }
 
-    @GetMapping("/{repository}/changes", produces = arrayOf(MediaType.TEXT_EVENT_STREAM_VALUE))
+    @GetMapping("/{repository}/changes", produces = [MediaType.TEXT_EVENT_STREAM_VALUE])
     fun getChanges(info: ReactiveRestResourceInformation): ResponseEntity<Flowable<out Change<Any?>>> {
         val repo = info.repository as? RxJava2ChangeFeedRepository<*, *>
-        return repo?.let { ResponseEntity.ok(repo.changeFeed()) } ?: ResponseEntity.notFound().build()
+
+        val responseHeaders = HttpHeaders()
+        responseHeaders.cacheControl = "no-cache"
+        responseHeaders.set("X-Accel-Buffering", "no")
+
+        return repo?.let { ResponseEntity.ok().headers(responseHeaders).body(repo.changeFeed()) }
+                ?: ResponseEntity.notFound().headers(responseHeaders).build()
     }
 
     @DeleteMapping("/{repository}")
