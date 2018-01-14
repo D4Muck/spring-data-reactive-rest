@@ -40,15 +40,23 @@ open class ReactiveRestController(val conversionService: ConversionService) {
     }
 
     @GetMapping("/{repository}/changes", produces = [MediaType.TEXT_EVENT_STREAM_VALUE])
-    fun getChanges(info: ReactiveRestResourceInformation): ResponseEntity<Flowable<out Change<Any?>>> {
+    fun getChanges(info: ReactiveRestResourceInformation): ResponseEntity<Flowable<out List<Change<Any?>>>> {
         val repo = info.repository as? RxJava2ChangeFeedRepository<*, *>
 
         val responseHeaders = HttpHeaders()
         responseHeaders.cacheControl = "no-cache"
         responseHeaders.set("X-Accel-Buffering", "no")
 
-        return repo?.let { ResponseEntity.ok().headers(responseHeaders).body(repo.changeFeed()) }
-                ?: ResponseEntity.notFound().headers(responseHeaders).build()
+        return repo?.let {
+            val changeFeed = repo.changeFeed()
+                    .share()
+            ResponseEntity.ok().headers(responseHeaders).body(
+                    changeFeed
+                            .buffer(changeFeed.throttleLast(10, TimeUnit.MILLISECONDS))
+                            .filter { it.size > 0 }
+                            .onBackpressureBuffer()
+            )
+        } ?: ResponseEntity.notFound().headers(responseHeaders).build()
     }
 
     @DeleteMapping("/{repository}")
